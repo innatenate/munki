@@ -1,16 +1,17 @@
-import keywordtranslate
+from commands import keywordtranslate
 import datetime
 import calendar
 
 
 def translate(words):
+    trueWords = words
     words = words.lower()
     whitelist = set('abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ')
     words = ''.join(filter(whitelist.__contains__, words))
     words = words.split(" ")
     print(words)
 
-    keywordtranslate.process(words)
+    keywordtranslate.process(words, trueWords)
 
 
 def degreeTranslate(degree):

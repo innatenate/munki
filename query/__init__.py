@@ -4,6 +4,10 @@ queries = {
     'maxQueryLength': 10
 }
 
+vars = {
+    "queryActive":False
+}
+
 def make(name, keywords, function, data=False):
     global queries
 

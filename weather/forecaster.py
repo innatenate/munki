@@ -12,6 +12,8 @@ highPressureThresh = 1018
 lowPressureThresh = 1013
 
 
+
+
 def dataProcess():
     global weeklyDataJSON
     weeklyDataJSON = requests.get(weeklyData).json()
@@ -22,6 +24,7 @@ def dataProcess():
         "notes": {},
         "important":{},
         "day": dayName,
+        "dt": datetime.datetime.now(),
         "daynum": 0,
         "temps": {
             "day": round(day['temp']),
@@ -40,7 +43,7 @@ def dataProcess():
             'winddir': trueDegree},
         "forecast": {
             "basic": day['conditions'],
-            "detail": day["description"],
+            "details": day["description"],
             "icon": day["icon"]}}
     if returnDay['details']['uvi'] >= 8:
         returnDay['important']['uv'] = "high"
@@ -103,33 +106,157 @@ def phraseBuild(day):
 
 
     beginning = uni.choose([
-        f"Today's weather seems {context} with an average temperature of {day['temps']['day']}. Expect it to feel like {day['temps']['fl']}.",
-        f"I'm forecasting a {context} day with temperatures around {day['temps']['day']}. The average feels-like temperature is {day['temps']['fl']}.",
-        f"Today seems fairly {context} with temperatures around {day['temps']['day']} and feels-like temperatures around {day['temps']['fl']}.",
-        f"I forecast today to be {context} with temperatures at {day['temps']['day']} and it will feel around {day['temps']['fl']} outside."
+        f"Today's weather seems {context} with an average temperature of {day['temps']['day']}°. Expect it to feel like {day['temps']['fl']}°.",
+        f"I'm forecasting a {context} day with temperatures around {day['temps']['day']}°. The average feels-like temperature is {day['temps']['fl']}°.",
+        f"Today seems fairly {context} with temperatures around {day['temps']['day']}° and feels-like temperatures around {day['temps']['fl']}°.",
+        f"I forecast today to be {context} with temperatures at {day['temps']['day']}° and it will feel around {day['temps']['fl']}° outside."
     ])
 
     weatherResult = uni.choose([
-        f"I forecast it to be {day['forecast']['description']}.",
-        f"You should expect {day['forecast']['description']}.",
-        f"I am forecasting today to be {day['forecast']['description']}",
-        f"For today, expect it to be {day['forecast']['description']}."
+        f"You'll notice it will be {day['forecast']['details']}",
+        f"You should expect {day['forecast']['details']}",
+        f"I am forecasting today to be {day['forecast']['details']}",
+        f"Anticipate today's weather being {day['forecast']['details']}"
     ])
-    mainPhrase = beginning + "<break time=3s/>" + important + "<break time=3s/>" + notes
+
+    mainPhrase = beginning + " <break time='0.5s'/> " + weatherResult + " <break time='0.5s'/> " + important + " <break time='0.5s'/> " + notes
 
     return mainPhrase 
 
-def forecastInit(forecastUpdate, justUpdate):
+def forecastInit(forecastUpdate):
     mainDay = dataProcess()
-    pass
+    mainPhrase = phraseBuild(mainDay)
+    mainDay['phrase'] = mainPhrase
+
+    if forecastUpdate:                          ## Universal Variable Hour Weather Update
+        if universal.weather['pastDay']:
+            dayTime = universal.weather['pastDay']['dt']
+            if (dayTime + 86400) <= mainDay['dt']:
+                universal.weather['pastDay'] = mainDay
+        else:
+            universal.weather['pastDay'] = mainDay
+        universal.weather['day'] = mainDay
+    
+    return mainPhrase
+
 
 def dataTomProcess():
-    pass
-def phraseTomBuild():
-    pass
-def forecastTomInit():
-    pass
+    global weeklyDataJSON
+    weeklyDataJSON = requests.get(weeklyData).json()
+    day = weeklyDataJSON['days'][1]
+    dayName = unitconv.getDay(1)
+    trueDegree = unitconv.degreeTranslate(day['winddir'])
+    returnDay = {
+        "notes": {},
+        "important":{},
+        "day": dayName,
+        "dt": datetime.datetime.now(),
+        "daynum": 0,
+        "temps": {
+            "day": round(day['temp']),
+            "fl": round(day['feelslike'])},
+        "details": {
+            "pressure": round(day['pressure']),
+            'humidity': round(day['humidity']),
+            'dp': round(day['dew']),
+            'uvi': round(day['uvindex']),
+            'clouds': day["cloudcover"],
+            'pop': day['precipprob'],
+            'snow': day['snow'],
+            'sv': day['severerisk'],
+            'poptype': day['preciptype'],
+            'windspeed': day['windspeed'],
+            'winddir': trueDegree},
+        "forecast": {
+            "basic": day['conditions'],
+            "details": day["description"],
+            "icon": day["icon"]}}
+    if returnDay['details']['uvi'] >= 8:
+        returnDay['important']['uv'] = "high"
+    if returnDay['details']['sv'] <= 50 and returnDay['details']['sv'] > 30:
+        returnDay['important']['severe'] = 'moderate'
+    elif returnDay['details']['sv'] > 50:
+        returnDay['important']['severe'] = 'high'
+    if returnDay['details']['pressure'] >= highPressureThresh:
+        returnDay['notes']['pressure'] = 'high'
+    elif returnDay['details']['pressure'] <= lowPressureThresh:
+        returnDay['notes']['pressure'] = 'low'
 
+    return returnDay
+
+def phraseTomBuild(day):
+
+    context = uni.choose(["fair", "good", "moderate", "acceptable", "adequate", "favorable", "opportune"])
+
+    important = ""
+    if 'important' in day:
+        if 'uv' in day['important']:
+            if day['important']['uv'] == "high":
+                context = uni.choose(["sunny", "bright", "summery", "clear", "cloudless", "clement"])
+                important += uni.choose([
+                    "Additionally, the UV will be fairly high tomorrow. You'll want to consider wearing sunscreen.",
+                    "It also seems like UV readings are going to be fairly high tomorrow.",
+                    "You'll also want to make note that the UV readings are expected to be high.",
+                    "Another important note for tomorrow, the UV readings are fairly high."
+                ])
+        if 'severe' in day['important']:
+            if day['important']['severe'] == "moderate":
+                context = uni.choose(["tempestuous", "turbulent", "boisterous", "foul"])
+                important += uni.choose([
+                    "There is also a moderate threat of severe weather.",
+                    "The forecast is also showing a moderate threat of severe weather.",
+                    "I am also noting a moderate weather threat."
+                ])
+            elif day['important']['severe'] == "high":
+                context = uni.choose(["melancholic", "distressing", "parlous"])
+                important += uni.choose([
+                    "It seems like there will be a fairly high threat of severe weather.",
+                    "You may also want to note that there is a high chance of severe weather.",
+                    "There also seems to be a high chance of severe weather."
+                ])
+    
+    notes = ""
+    if 'notes' in day:
+        if 'pressure' in day['notes']:
+            if day['notes']['pressure'] == "high":
+                notes += uni.choose([
+                    "I've also noted a pressure reading on the higher end.",
+                    "I also noticing a high pressure reading.",
+                    "Furthermore, I've notice a rise in atmospheric pressure."])
+
+            if day['notes']['pressure'] == "low":
+                notes += uni.choose([
+                    "There also is a decrease in pressure in this area. It seems lower than typical averages.",
+                    "I also noticing a lower barometric pressure reading in the area.",
+                    "Additionally; I've notice a decrease in barometric pressure."])
+
+
+    beginning = uni.choose([
+        f"Tomorrow's weather seems {context} with an average temperature of {day['temps']['day']}°. Expect it to feel like {day['temps']['fl']}°.",
+        f"I'm forecasting a {context} day tomorrow, with temperatures around {day['temps']['day']}°. The average feels-like temperature is {day['temps']['fl']}°.",
+        f"Tomorrow seems fairly {context} with temperatures around {day['temps']['day']}° and feels-like temperatures around {day['temps']['fl']}°.",
+        f"I forecast tomorrow to be {context} with temperatures at {day['temps']['day']}° and it will feel around {day['temps']['fl']}° outside."
+    ])
+
+    weatherResult = uni.choose([
+        f"You'll notice it will be {day['forecast']['details']}",
+        f"You should expect tomorrow to be {day['forecast']['details']}",
+        f"I am forecasting tomorrow to be {day['forecast']['details']}",
+        f"Anticipate tomorrow's weather being {day['forecast']['details']}"
+    ])
+
+    mainPhrase = beginning + " <break time='0.5s'/> " + weatherResult + " <break time='0.5s'/> " + important + " <break time='0.5s'/> " + notes
+
+    return mainPhrase 
+
+def forecastTomInit(forecastUpdate):
+    mainDay = dataTomProcess()
+    mainPhrase = phraseTomBuild(mainDay)
+    mainDay['phrase'] = mainPhrase
+    
+    return mainPhrase
+
+    
 def data7Process():
     global weeklyDataJSON
     weeklyDataJSON = requests.get(weeklyData).json()
@@ -142,10 +269,14 @@ def data7Process():
     day7 = weeklyDataJSON['days'][7]
     week = [day1, day2, day3, day4, day5, day6, day7]
     for day in week:
-        if type(day) is not list:
-            dayName = unitconv.getDay(week.index(day))
+        day['raw'] = True
+    returnWeek = []
+    for day in week:
+        if 'zizdent' not in day:
+            dayName = unitconv.getDay(week.index(day)) or unitconv.getDate("name")
             trueDegree = unitconv.degreeTranslate(day['winddir'])
             returnDay = {
+                "zizdent":True,
                 "day": dayName,
                 "daynum": week.index(day),
                 "temps": {
@@ -165,13 +296,11 @@ def data7Process():
                     'winddir': trueDegree},
                 "forecast": {
                     "basic": day['conditions'],
-                    "detail": day["description"],
+                    "details": day["description"],
                     "icon": day["icon"]}}
+            returnWeek.append(returnDay)
 
-            week.append(returnDay)
-            week.remove(day)
-
-    return week
+    return returnWeek
 
 def phrase7Build(day):
 
@@ -181,7 +310,7 @@ def phrase7Build(day):
             [f"For {day['day']}, expect temperatures ranging around {day['temps']['day']}° with a feels like of {day['temps']['fl']}°.",
              f"On {day['day']}, plan for temperatures around {day['temps']['day']}° and a feels like of {day['temps']['fl']}°.",
              f"To begin my forecast, on {day['day']} I am predicting temps around {day['temps']['day']}° and feels like temps around {day['temps']['fl']}°."])
-    elif 0 < day["daynum"] < 7:
+    elif 0 < day["daynum"] < 6:
         if day["daynum"] == 1:
             dayPhrase = "Secondly"
         elif day["daynum"] == 2:
@@ -193,66 +322,66 @@ def phrase7Build(day):
         elif day["daynum"] == 5:
             dayPhrase = "Sixthly"
         beginPhrase = uni.choose([
-            f"<break time = '2s'/> In addition, on {day['day']}, anticipate temperatures to average at {day['temps']['day']}° and feels like temperatures around {day['temps']['fl']}°.",
-            f"<break time = '2s'/> {dayPhrase}, for {day['day']}, plan on temperatures being around {day['temps']['day']}° with feels like temperatures at {day['temps']['fl']}°.",
-            f"<break time = '2s'/> As for {day['day']}, expect temperatures to linger at {day['temps']['day']}° with feels like doing the same at {day['temps']['fl']}°.",
-            f"<break time = '2s'/> On {day['day']}, I'm seeing temperatures at {day['temps']['day']}° and feels like temperatures at {day['temps']['fl']}°.",
-            f"<break time = '2s'/> And as for {day['day']}, I am forecasting temperatures around {day['temps']['day']}° and feels like temperatures at {day['temps']['fl']}°."])
-    elif day["daynum"] == 7:
+            f"<break time = '0.75s'/> In addition, on {day['day']}, anticipate temperatures to average at {day['temps']['day']}° and feels like temperatures around {day['temps']['fl']}°.",
+            f"<break time = '0.75s'/> {dayPhrase}, for {day['day']}, plan on temperatures being around {day['temps']['day']}° with feels like temperatures at {day['temps']['fl']}°.",
+            f"<break time = '0.75s'/> As for {day['day']}, expect temperatures to linger at {day['temps']['day']}° with feels like doing the same at {day['temps']['fl']}°.",
+            f"<break time = '0.75s'/> On {day['day']}, I'm seeing temperatures at {day['temps']['day']}° and feels like temperatures at {day['temps']['fl']}°.",
+            f"<break time = '0.75s'/> And as for {day['day']}, I am forecasting temperatures around {day['temps']['day']}° and feels like temperatures at {day['temps']['fl']}°."])
+    elif day["daynum"] == 6:
         beginPhrase = uni.choose([
-            f"<break time = '3s'/> And lastly, {day['day']}, expect temperatures to range around {day['temps']['day']}° with feels like doing the same at {day['temps']['fl']}°.",
-            f"<break time = '3s'/> And as for {day['day']}, I forecast temperatures to be averaging {day['temps']['day']}° with feels like averaging {day['temps']['fl']}°.",
-            f"<break time = '3s'/> And for our last day, On {day['day']}, I predict temperatures at {day['temps']['day']}° with feels like following at {day['temps']['fl']}°."])
+            f"<break time = '0.5s'/> And lastly, {day['day']}, expect temperatures to range around {day['temps']['day']}° with feels like doing the same at {day['temps']['fl']}°.",
+            f"<break time = '0.5s'/> And as for {day['day']}, I forecast temperatures to be averaging {day['temps']['day']}° with feels like averaging {day['temps']['fl']}°.",
+            f"<break time = '0.5s'/> And for our last day, On {day['day']}, I predict temperatures at {day['temps']['day']}° with feels like following at {day['temps']['fl']}°."])
 
-    beginPhrase += uni.choose(["<break time = '2s'/>  I am forecasting it to be ", "<break time = '2s'/>  Expect it to be ", \
-        "<break time = '2s'/>  Seems like it will be ", "<break time = '2s'/>  Anticipate it being ", 
-        "<break time = '2s'/>  The forecast shows it as ", "<break time = '2s'/> Seems like the forecasting is showing it to be "])
+    beginPhrase += uni.choose(["<break time = '0.75s'/>  I am forecasting it to be ", "<break time = '0.75s'/>  Expect it to be ", \
+        "<break time = '0.75s'/>  Seems like it will be ", "<break time = '0.75s'/>  Anticipate it being ", 
+        "<break time = '0.75s'/>  The forecast shows it as ", "<break time = '0.75s'/> Seems like the forecasting is showing it to be "])
     
-    beginPhrase += day['forecast']['description']
+    beginPhrase += day['forecast']['details']
 
     importantPhrase = ""
     if "ice" in day["important"]:
         importantPhrase += uni.choose([
-            "<break time = '2s'/> Additionally, there will be a pretty high chance of ice. Drive safe",
-            "<break time = '2s'/>I want to warn you of the ice danger. Please drive safe.",
-            "<break time = '2s'/>There seems to be an ice danger. Please drive safe."])
+            "<break time = '0.75s'/> Additionally, there will be a pretty high chance of ice. Drive safe",
+            "<break time = '0.75s'/>I want to warn you of the ice danger. Please drive safe.",
+            "<break time = '0.75s'/>There seems to be an ice danger. Please drive safe."])
     if "snow" in day["important"]:
         if day["important"]["snow"] == "expected" or day["important"]["snow"] == "probable":
             importantPhrase += uni.choose([
-                "<break time = '2s'/> Enjoy the expected snow.",
-                "<break time = '2s'/> Drive safe in the snow.",
-                "<break time = '2s'/> I anticipate snow-men and snow-women in your future.",
-                "<break time = '2s'/> I wonder how fast the snow will melt this time."])
+                "<break time = '0.75s'/> Enjoy the expected snow.",
+                "<break time = '0.75s'/> Drive safe in the snow.",
+                "<break time = '0.75s'/> I anticipate snow-men and snow-women in your future.",
+                "<break time = '0.75s'/> I wonder how fast the snow will melt this time."])
         elif day["important"]["snow"] == "chance":
             importantPhrase += uni.choose([
-                "<break time = '2s'/> There seems to be a chance of snow in the forecast.",
-                "<break time = '2s'/> I see a small chance of snow in the forecast.",
-                "<break time = '2s'/> I anticipate small snow-men and snow-women in your future.",
-                "<break time = '2s'/> I see a small chance of snow. I wonder how fast the snow will melt this time."])
+                "<break time = '0.75s'/> There seems to be a chance of snow in the forecast.",
+                "<break time = '0.75s'/> I see a small chance of snow in the forecast.",
+                "<break time = '0.75s'/> I anticipate small snow-men and snow-women in your future.",
+                "<break time = '0.75s'/> I see a small chance of snow. I wonder how fast the snow will melt this time."])
     if "severe" in day["important"]:
         if day["important"]["severe"] == "severe":
             importantPhrase += uni.choose([
-                "<break time = '2s'/> There is a very high chance of severe weather forecasted.",
-                "<break time = '2s'/> I am noticing a very high chance of severe weather.",
-                "<break time = '2s'/> The forecast shows a very high chance of severe weather.",])
+                "<break time = '0.75s'/> There is a very high chance of severe weather forecasted.",
+                "<break time = '0.75s'/> I am noticing a very high chance of severe weather.",
+                "<break time = '0.75s'/> The forecast shows a very high chance of severe weather.",])
 
     notesPhrase = ""
     if "fronts" in day["notes"]:
         if day["notes"]["fronts"] == "warm front":
             notesPhrase += uni.choose([
-                "<break time = '2s'/> I've noticed that there's a warm front moving in at this point.",
-                "<break time = '2s'/> Seems like a warm front is beginning to enter the area at this point in the forecast",
-                "<break time = '2s'/> I see a possibility of a warm front moving into the area."])
+                "<break time = '0.75s'/> I've noticed that there's a warm front moving in at this point.",
+                "<break time = '0.75s'/> Seems like a warm front is beginning to enter the area at this point in the forecast",
+                "<break time = '0.75s'/> I see a possibility of a warm front moving into the area."])
         if day["notes"]["fronts"] == "cold front":
             notesPhrase += uni.choose([
-                "<break time = '2s'/> I've noticed that a cold front is moving in around this point in the forecast.",
-                "<break time = '2s'/> The wind directions suggest a cold front could be moving in.",
-                "<break time = '2s'/> I've noticed the possbility of a cold front entering the area based on the wind changes."])
+                "<break time = '0.75s'/> I've noticed that a cold front is moving in around this point in the forecast.",
+                "<break time = '0.75s'/> The wind directions suggest a cold front could be moving in.",
+                "<break time = '0.75s'/> I've noticed the possbility of a cold front entering the area based on the wind changes."])
         if day["notes"]["fronts"] == "sporadic":
             notesPhrase += uni.choose([
-                "<break time = '2s'/> The atmopspheric pressure seems to be pretty sporadic at this point. That could suggest potential rain.",
-                "<break time = '2s'/> The atmopshere seems pretty sporadic at this point. That could lead to sporadic weather as well.",
-                "<break time = '2s'/> I've noticed a lot of differences in the atmopshere throughout the week. That could lead to sporadic weather."])
+                "<break time = '0.75s'/> The atmopspheric pressure seems to be pretty sporadic at this point. That could suggest potential rain.",
+                "<break time = '0.75s'/> The atmopshere seems pretty sporadic at this point. That could lead to sporadic weather as well.",
+                "<break time = '0.75s'/> I've noticed a lot of differences in the atmopshere throughout the week. That could lead to sporadic weather."])
 
     returnPhrase = beginPhrase + " " + importantPhrase + " " + notesPhrase
     
@@ -265,23 +394,25 @@ def forecast7Init(forecastUpdate):
         "weather": procweek}                                ## Convert to dict with weather = procweek and dt = now
 
     if forecastUpdate:                          ## Universal Variable Hour Weather Update
-        if universal.weather['pastweek']:
-            weekTime = universal.weather['pastweek']['dt']
+        if universal.weather['past7week']:
+            weekTime = universal.weather['past7week']['dt']
             if (weekTime + 604800) <= week['dt']:
-                universal.weather['pastweek'] = week
+                universal.weather['past7week'] = week
         else:
-            universal.weather['pastweek'] = week
-        universal.weather['currentweek'] = week
+            universal.weather['past7week'] = week
+        universal.weather['7week'] = week
 
     windDirections = []
     weekPhrase = ""
     weeklyTemp = 0
     weeklyFlTemp = 0
-
+    for day in procweek:
+        print("\n")
+        print(repr(day))
     for day in procweek:
         if procweek[procweek.index(day)-1]:
             ref = procweek[procweek.index(day)-1]
-            main = procweek[day]
+            main = procweek[procweek.index(day)]
             main['trend'] = {}
             main['important'] = {}
             main['notes'] = {}
@@ -351,7 +482,7 @@ def forecast7Init(forecastUpdate):
                 main['important']['ice'] = "expected"
                 resultContext = "bad"
         else: 
-            main = procweek[day]
+            main = procweek[procweek.index(day)]
             main['trend'] = {}
             main['important'] = {}
             main['notes'] = {}
@@ -416,8 +547,8 @@ def forecast7Init(forecastUpdate):
         weeklyTemp += day['temps']['day']
         weeklyFlTemp += day['temps']['fl']
 
-        phrase = phrase7Build(procweek[day])
-        procweek[day]['phrase'] = phrase
+        phrase = phrase7Build(procweek[procweek.index(day)])
+        procweek[procweek.index(day)]['phrase'] = phrase
         weekPhrase += phrase + " "
 
     if not resultContext:
@@ -462,11 +593,12 @@ def data5Process():
     day5 = weeklyDataJSON['days'][5]
     week = [day1, day2, day3, day4, day5]
     for day in week:
-        if type(day) is not list:
+        if 'identification' not in day:
             dayName = unitconv.getDay(week.index(day))
             trueDegree = unitconv.degreeTranslate(day['winddir'])
             returnDay = {
                 "day": dayName,
+                "identification": True,
                 "daynum": week.index(day),
                 "temps": {
                     "day": round(day['temp']),
@@ -485,7 +617,7 @@ def data5Process():
                     'winddir': trueDegree},
                 "forecast": {
                     "basic": day['conditions'],
-                    "detail": day["description"],
+                    "details": day["description"],
                     "icon": day["icon"]}}
 
             week.append(returnDay)
@@ -509,66 +641,66 @@ def phrase5Build(day):
         elif day["daynum"] == 3:
             dayPhrase = "Fourthly"
         beginPhrase = uni.choose([
-            f"<break time = '2s'/> In addition, on {day['day']}, anticipate temperatures to average at {day['temps']['day']}° and feels like temperatures around {day['temps']['fl']}°.",
-            f"<break time = '2s'/> {dayPhrase}, for {day['day']}, plan on temperatures being around {day['temps']['day']}° with feels like temperatures at {day['temps']['fl']}°.",
-            f"<break time = '2s'/> As for {day['day']}, expect temperatures to linger at {day['temps']['day']}° with feels like doing the same at {day['temps']['fl']}°.",
-            f"<break time = '2s'/> On {day['day']}, I'm seeing temperatures at {day['temps']['day']}° and feels like temperatures at {day['temps']['fl']}°.",
-            f"<break time = '2s'/> And as for {day['day']}, I am forecasting temperatures around {day['temps']['day']}° and feels like temperatures at {day['temps']['fl']}°."])
+            f"<break time = '0.75s'/> In addition, on {day['day']}, anticipate temperatures to average at {day['temps']['day']}° and feels like temperatures around {day['temps']['fl']}°.",
+            f"<break time = '0.75s'/> {dayPhrase}, for {day['day']}, plan on temperatures being around {day['temps']['day']}° with feels like temperatures at {day['temps']['fl']}°.",
+            f"<break time = '0.75s'/> As for {day['day']}, expect temperatures to linger at {day['temps']['day']}° with feels like doing the same at {day['temps']['fl']}°.",
+            f"<break time = '0.75s'/> On {day['day']}, I'm seeing temperatures at {day['temps']['day']}° and feels like temperatures at {day['temps']['fl']}°.",
+            f"<break time = '0.75s'/> And as for {day['day']}, I am forecasting temperatures around {day['temps']['day']}° and feels like temperatures at {day['temps']['fl']}°."])
     elif day["daynum"] == 5:
         beginPhrase = uni.choose([
-            f"<break time = '3s'/> And lastly, {day['day']}, expect temperatures to range around {day['temps']['day']}° with feels like doing the same at {day['temps']['fl']}°.",
-            f"<break time = '3s'/> And as for {day['day']}, I forecast temperatures to be averaging {day['temps']['day']}° with feels like averaging {day['temps']['fl']}°.",
-            f"<break time = '3s'/> And for our last day, On {day['day']}, I predict temperatures at {day['temps']['day']}° with feels like following at {day['temps']['fl']}°."])
+            f"<break time = '0.5s'/> And lastly, {day['day']}, expect temperatures to range around {day['temps']['day']}° with feels like doing the same at {day['temps']['fl']}°.",
+            f"<break time = '0.5s'/> And as for {day['day']}, I forecast temperatures to be averaging {day['temps']['day']}° with feels like averaging {day['temps']['fl']}°.",
+            f"<break time = '0.5s'/> And for our last day, On {day['day']}, I predict temperatures at {day['temps']['day']}° with feels like following at {day['temps']['fl']}°."])
 
-    beginPhrase += uni.choose(["<break time = '2s'/>  I am forecasting it to be ", "<break time = '2s'/>  Expect it to be ", \
-        "<break time = '2s'/>  Seems like it will be ", "<break time = '2s'/>  Anticipate it being ", 
-        "<break time = '2s'/>  The forecast shows it as ", "<break time = '2s'/> Seems like the forecasting is showing it to be "])
+    beginPhrase += uni.choose(["<break time = '0.75s'/>  I am forecasting it to be ", "<break time = '0.75s'/>  Expect it to be ", \
+        "<break time = '0.75s'/>  Seems like it will be ", "<break time = '0.75s'/>  Anticipate it being ", 
+        "<break time = '0.75s'/>  The forecast shows it as ", "<break time = '0.75s'/> Seems like the forecasting is showing it to be "])
     
-    beginPhrase += day['forecast']['description']
+    beginPhrase += day['forecast']['details']
 
     importantPhrase = ""
     if "ice" in day["important"]:
         importantPhrase += uni.choose([
-            "<break time = '2s'/> Additionally, there will be a pretty high chance of ice. Drive safe",
-            "<break time = '2s'/>I want to warn you of the ice danger. Please drive safe.",
-            "<break time = '2s'/>There seems to be an ice danger. Please drive safe."])
+            "<break time = '0.75s'/> Additionally, there will be a pretty high chance of ice. Drive safe",
+            "<break time = '0.75s'/>I want to warn you of the ice danger. Please drive safe.",
+            "<break time = '0.75s'/>There seems to be an ice danger. Please drive safe."])
     if "snow" in day["important"]:
         if day["important"]["snow"] == "expected" or day["important"]["snow"] == "probable":
             importantPhrase += uni.choose([
-                "<break time = '2s'/> Enjoy the expected snow.",
-                "<break time = '2s'/> Drive safe in the snow.",
-                "<break time = '2s'/> I anticipate snow-men and snow-women in your future.",
-                "<break time = '2s'/> I wonder how fast the snow will melt this time."])
+                "<break time = '0.75s'/> Enjoy the expected snow.",
+                "<break time = '0.75s'/> Drive safe in the snow.",
+                "<break time = '0.75s'/> I anticipate snow-men and snow-women in your future.",
+                "<break time = '0.75s'/> I wonder how fast the snow will melt this time."])
         elif day["important"]["snow"] == "chance":
             importantPhrase += uni.choose([
-                "<break time = '2s'/> There seems to be a chance of snow in the forecast.",
-                "<break time = '2s'/> I see a small chance of snow in the forecast.",
-                "<break time = '2s'/> I anticipate small snow-men and snow-women in your future.",
-                "<break time = '2s'/> I see a small chance of snow. I wonder how fast the snow will melt this time."])
+                "<break time = '0.75s'/> There seems to be a chance of snow in the forecast.",
+                "<break time = '0.75s'/> I see a small chance of snow in the forecast.",
+                "<break time = '0.75s'/> I anticipate small snow-men and snow-women in your future.",
+                "<break time = '0.75s'/> I see a small chance of snow. I wonder how fast the snow will melt this time."])
     if "severe" in day["important"]:
         if day["important"]["severe"] == "severe":
             importantPhrase += uni.choose([
-                "<break time = '2s'/> There is a very high chance of severe weather forecasted.",
-                "<break time = '2s'/> I am noticing a very high chance of severe weather.",
-                "<break time = '2s'/> The forecast shows a very high chance of severe weather.",])
+                "<break time = '0.75s'/> There is a very high chance of severe weather forecasted.",
+                "<break time = '0.75s'/> I am noticing a very high chance of severe weather.",
+                "<break time = '0.75s'/> The forecast shows a very high chance of severe weather.",])
 
     notesPhrase = ""
     if "fronts" in day["notes"]:
         if day["notes"]["fronts"] == "warm front":
             notesPhrase += uni.choose([
-                "<break time = '2s'/> I've noticed that there's a warm front moving in at this point.",
-                "<break time = '2s'/> Seems like a warm front is beginning to enter the area at this point in the forecast",
-                "<break time = '2s'/> I see a possibility of a warm front moving into the area."])
+                "<break time = '0.75s'/> I've noticed that there's a warm front moving in at this point.",
+                "<break time = '0.75s'/> Seems like a warm front is beginning to enter the area at this point in the forecast",
+                "<break time = '0.75s'/> I see a possibility of a warm front moving into the area."])
         if day["notes"]["fronts"] == "cold front":
             notesPhrase += uni.choose([
-                "<break time = '2s'/> I've noticed that a cold front is moving in around this point in the forecast.",
-                "<break time = '2s'/> The wind directions suggest a cold front could be moving in.",
-                "<break time = '2s'/> I've noticed the possbility of a cold front entering the area based on the wind changes."])
+                "<break time = '0.75s'/> I've noticed that a cold front is moving in around this point in the forecast.",
+                "<break time = '0.75s'/> The wind directions suggest a cold front could be moving in.",
+                "<break time = '0.75s'/> I've noticed the possbility of a cold front entering the area based on the wind changes."])
         if day["notes"]["fronts"] == "sporadic":
             notesPhrase += uni.choose([
-                "<break time = '2s'/> The atmopspheric pressure seems to be pretty sporadic at this point. That could suggest potential rain.",
-                "<break time = '2s'/> The atmopshere seems pretty sporadic at this point. That could lead to sporadic weather as well.",
-                "<break time = '2s'/> I've noticed a lot of differences in the atmopshere throughout the week. That could lead to sporadic weather."])
+                "<break time = '0.75s'/> The atmopspheric pressure seems to be pretty sporadic at this point. That could suggest potential rain.",
+                "<break time = '0.75s'/> The atmopshere seems pretty sporadic at this point. That could lead to sporadic weather as well.",
+                "<break time = '0.75s'/> I've noticed a lot of differences in the atmopshere throughout the week. That could lead to sporadic weather."])
 
     returnPhrase = beginPhrase + " " + importantPhrase + " " + notesPhrase
     
@@ -587,7 +719,7 @@ def forecast5Init(forecastUpdate):
                 universal.weather['past5week'] = week
         else:
             universal.weather['past5week'] = week
-        universal.weather['current5week'] = week
+        universal.weather['5week'] = week
 
     windDirections = []
     weekPhrase = ""
@@ -597,7 +729,7 @@ def forecast5Init(forecastUpdate):
     for day in procweek:
         if procweek[procweek.index(day)-1]:
             ref = procweek[procweek.index(day)-1]
-            main = procweek[day]
+            main = procweek[procweek.index(day)]
             main['trend'] = {}
             main['important'] = {}
             main['notes'] = {}
@@ -667,7 +799,7 @@ def forecast5Init(forecastUpdate):
                 main['important']['ice'] = "expected"
                 resultContext = "bad"
         else: 
-            main = procweek[day]
+            main = procweek[procweek.index(day)]
             main['trend'] = {}
             main['important'] = {}
             main['notes'] = {}
@@ -732,8 +864,8 @@ def forecast5Init(forecastUpdate):
         weeklyTemp += day['temps']['day']
         weeklyFlTemp += day['temps']['fl']
 
-        phrase = phrase5Build(procweek[day])
-        procweek[day]['phrase'] = phrase
+        phrase = phrase5Build(procweek[procweek.index(day)])
+        procweek[procweek.index(day)]['phrase'] = phrase
         weekPhrase += phrase + " "
 
     if not resultContext:
@@ -768,8 +900,84 @@ def forecast5Init(forecastUpdate):
     return weekPhrase
 
 
+def forecastDetail(info):
+    detail = info['details']
+    context = info['context']
+    if 'data' in info:
+        data = info['data']
 
-def forecast(forecastType="day", forecastUpdate=True, justUpdate=False):
+    if context == "differentday":
+        trueDay = data['day']
+        if vars.weather['7day']:
+            noResult = True
+            for day in vars.weather['7day']:
+                if 'day' in day:
+                    if day == trueDay:
+                        noResult = False
+                        if detail == "temperatures":
+                            return vars.weather['7day'][day]['temps']
+                        elif detail == "pressure": 
+                            return vars.weather['7day'][day]['details']['pressure']
+                        elif detail == "humidity": 
+                            return vars.weather['7day'][day]['details']['humidity']
+                        elif detail == "dewpoint": 
+                            return vars.weather['7day'][day]['details']['dp']
+                        elif detail == "clouds": 
+                            return vars.weather['7day'][day]['details']['clouds']
+                        elif detail == "pop": 
+                            return vars.weather['7day'][day]['details']['pop']
+                        elif detail == "poptype": 
+                            return vars.weather['7day'][day]['details']['poptype']
+                        elif detail == "weather": 
+                            return vars.weather['7day'][day]['forecast']
+                        else:
+                            noResult = True
+            if noResult == True:
+                days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+                todayDay = uni.getDate("name")
+                todayDay = days.index(todayDay)
+                day = days.index(trueDay)
+                difference = todayDay - day
+                if difference > 0:
+                    difference *= -1
+                week = data7Process()
+                day = week[day]
+                if detail == "temperatures":
+                    return day['temps']
+                elif detail == "pressure": 
+                    return day['details']['pressure']
+                elif detail == "humidity": 
+                    return day['details']['humidity']
+                elif detail == "dewpoint": 
+                    return day['details']['dp']
+                elif detail == "clouds": 
+                    return day['details']['clouds']
+                elif detail == "pop": 
+                    return day['details']['pop']
+                elif detail == "poptype": 
+                    return day['details']['poptype']
+                elif detail == "weather": 
+                    return day['forecast']                
+    elif context == "today": 
+        day = dataProcess()
+        if detail == "temperatures":
+            return day['temps']
+        elif detail == "pressure": 
+            return day['details']['pressure']
+        elif detail == "humidity": 
+            return day['details']['humidity']
+        elif detail == "dewpoint": 
+            return day['details']['dp']
+        elif detail == "clouds": 
+            return day['details']['clouds']
+        elif detail == "pop": 
+            return day['details']['pop']
+        elif detail == "poptype": 
+            return day['details']['poptype']
+        elif detail == "weather": 
+            return day['forecast']  
+
+def forecast(forecastType="day", forecastUpdate=True, justUpdate=False, detail=False):
     if forecastType == "7day":
         result = forecast7Init(forecastUpdate)
         if result:
@@ -778,12 +986,16 @@ def forecast(forecastType="day", forecastUpdate=True, justUpdate=False):
         result = forecast5Init(forecastUpdate)
         if result:
             return result
-    elif forecastType == "day":
-        result = forecastInit(forecastUpdate, justUpdate)
+    elif forecastType == "today":
+        result = forecastInit(forecastUpdate)
         if result:
             return result
     elif forecastType == "tomorrow":
-        result = forecastTomInit()
+        result = forecastTomInit(False)
+        if result:
+            return result
+    elif forecastType == "detail":
+        result = forecastDetail(detail)
         if result:
             return result
 

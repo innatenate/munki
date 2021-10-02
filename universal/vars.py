@@ -35,6 +35,11 @@ weather = {
     'current':None
 }
 
-while time.sleep(weather['updateInterval']):
-    weather['lastUpdate'] = datetime.now()
-    weatherResult = forecast.update("all")
+phrases = {
+    "lastPhrase": "None",
+    'pastPhrases':[],
+    'phraseLimit':5
+}
+#while time.sleep(weather['updateInterval']):
+#    weather['lastUpdate'] = datetime.now()
+#    weatherResult = forecast.update("all")

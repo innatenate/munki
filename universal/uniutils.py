@@ -1,6 +1,15 @@
 import random 
-import vars
+from universal import vars
+from universal import speechhandle
 
+def speak(sentence):
+    print(sentence)
+    sentence = "<speak> " + sentence + " </speak>"
+    speechhandle.process(sentence)
+    vars.phrases['pastPhrases'].insert(0, vars.phrases['lastPhrase'])
+    if len(vars.phrases['pastPhrases']) > vars.phrases['phraseLimit']:
+        vars.phrases['pastPhrases'].pop(5)
+    vars.phrases['lastPhrase'] = sentence
 
 def choose(phrases):
     phrase, phrase2, phrase3 = random.choice(phrases), random.choice(phrases), random.choice(phrases)
@@ -28,5 +37,5 @@ def makeContext(name, dataProvided=False, takeaway=False, spokenstr=False, passe
             vars.context['pastContext'] = [vars.context['recentContext']]
         if len(vars.context['pastContext']) >= vars.context['pastContextMax']:
             vars.context['pastContext'].pop(len(vars.context['pastContext'])-1)
-            
+
     vars.context['recentContext'] = context
