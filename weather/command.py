@@ -4,10 +4,33 @@ from randfacts import get_fact
 import time
 
 from universal import uniutils as uni
+from universal import vars
 from weather import forecaster as fc
 
 keys = []
 qb = {}
+day5 = None
+day7 = None
+tomorrowWeather = None
+todayWeather = None
+detailResult = None
+contextResult = None
+details = ["uv", "uv reading", "chance of rain", "chance of snow", "pressure", "barometric pressure", "atmospheric pressure", 
+            "wind speed", "wind gust", "wind direction", "precipitation", "temperature", "temperatures", "feelslike", "feels like",
+            "weather", "forecast", "detail", "details", "happening"]
+
+days =  ["saturday", "sunday", "monday", "thursday", "friday", "wednesday", "tuesday"]
+
+listeningKeys = []
+
+for detail in details:
+    for day in days:
+        listeningKeys.append(f"what is the {detail} for {day}")
+        listeningKeys.append(f"{detail} for {day}")
+        listeningKeys.append(f"{detail} on {day}")
+        listeningKeys.append(f"what is the {detail} on {day}")
+
+
 
 ### Weather: Questionbank
 ###     'temp' :  Question
@@ -27,6 +50,16 @@ def weatherOutside(keywords, info=False, info2=False, info3=False, info4=False):
     uni.speak(phrase)
     return True
 qb['weatheroutside']['function'] = weatherOutside
+qb['weatheroutside']['context'] = {
+           'context':  'weatheroutside',     # STR Name of context (ex in list)
+           'dataProvided':   True,              # BOOL Was data provided
+           'data': {                            # DICT Data if provided
+               'takeaway': contextResult,              # STR Context takeaway (weather specific)
+               'passedData': vars['weather']['day'],          # OBJ Extra data if passed
+               'listenfor': False,               # BOOL Check if listening for possible contextual requests
+               'listenforkeys': None    # LIST List of keys for listening handler to listen for
+               },
+          }
 
 
 qb['tempoutside'] = {}
@@ -71,12 +104,12 @@ qb['raincheck']['keys'] = ["do you think it will rain soon", "will it rain today
 qb['raincheck']['require'] = ["rain", "precipitate", "raining"]
 def rainCheck(keywords, info=False, info2=False, info3=False, info4=False): 
     pop = fc.forecast(forecastType="detail", detail={'details':"pop", 'context':"today"})
-    if pop < 10:
+    if pop > 10:
         phrase = uni.choose([
             "There is a small chance of precipitation today.",
             "It could rain today, but the chance is fairly low.",
             "There is a chance, but it is unlikely."])
-        if pop < 25:
+        if pop > 25:
             popType = fc.forecast(forecastType="detail", detail={'details':"poptype", 'context':"today"})
             popType = popType[0]
             phrase = uni.choose([
@@ -84,7 +117,7 @@ def rainCheck(keywords, info=False, info2=False, info3=False, info4=False):
                 f"There is a small possibility of {popType} today.",
                 f"There is atleast a {pop}% chance of {popType} as of my current forecast."
             ])
-            if pop < 50:
+            if pop > 50:
                 phrase = uni.choose([
                     f"There is a {pop}% chance of {popType} as of my current forecast.",
                     f"I am currently forecasting a {pop}% chance of {popType}.",
@@ -107,8 +140,11 @@ qb['pressureoutside']= {}
 qb['pressureoutside']['keys'] = ["what atmosphere changes", "what atmosphere pressure", "what barometric pressure",
                                  "what is the atmospheric pressure"]
 qb['pressureoutside']['require'] = ["barometric", "atmosphere", "atmospheric", "pressure"]
-def pressureOutside(keywords, info=False, info2=False, info3=False, info4=False):
-    pressure = fc.forecast(forecastType="detail", detail={'details':"pressure", 'context':"today"})
+def pressureOutside(keywords, info=False, info2=False, info3=False, info4=False, direct=False):
+    if not direct:
+        pressure = fc.forecast(forecastType="detail", detail={'details':"pressure", 'context':"today"})
+    else:
+        pressure = direct['details']['pressure']
     if pressure < fc.lowPressureThresh:
         phrase = uni.choose([
             f"The current {uni.choose(['barometric', 'atmospheric'])} pressure for the {uni.choose(['area', 'locale', 'location'])} is {pressure} hectopascals. That is a rather low reading.",
@@ -122,9 +158,11 @@ def pressureOutside(keywords, info=False, info2=False, info3=False, info4=False)
             f"The current {uni.choose(['barometric', 'atmospheric'])} pressure for the {uni.choose(['area', 'locale', 'location'])} is {pressure} hectopascals.",
             f"{uni.choose(['barometric', 'atmospheric'])} pressure is reading at {pressure} for the area."])
 
-    uni.speak(phrase)
-
-    return True
+    if direct:
+        return phrase
+    else:
+        uni.speak(phrase)
+        return True
 qb['pressureoutside']['function'] = pressureOutside
 
 
@@ -133,10 +171,21 @@ qb['tomorrowcheck']['keys'] = ["what is the weather tomorrow", "what is tomorrow
 qb['tomorrowcheck']['require'] = ['tomorrow', "tomorrow's", "tomorrows"]
 def tomorrowCheck(keywords, info=False, info2=False, info3=False, info4=False):
     phrase = fc.forecast(forecastType="tomorrow")
+    global tomorrowWeather
+    tomorrowWeather = phrase
     uni.speak(phrase)
     return True
 qb['tomorrowcheck']['function'] = tomorrowCheck
-
+qb['tomorrowcheck']['context'] = {
+           'context':  'tomorrowcheck',     # STR Name of context (ex in list)
+           'dataProvided':   True,              # BOOL Was data provided
+           'data': {                            # DICT Data if provided
+               'takeaway': contextResult,              # STR Context takeaway (weather specific)
+               'passedData': vars['weather']['pastDay'],          # OBJ Extra data if passed
+               'listenfor': False,               # BOOL Check if listening for possible contextual requests
+               'listenforkeys': None    # LIST List of keys for listening handler to listen for
+               },
+          }
 
 qb['sevendaycheck'] = {}
 qb['sevendaycheck']['keys'] = ["what is the seven day forecast", "what is it like this week", "what the 7-day forecast",
@@ -148,6 +197,16 @@ def sevenDayCheck(keywords, info=False, info2=False, info3=False, info4=False):
     uni.speak(phrase)
     return True
 qb['sevendaycheck']['function'] = sevenDayCheck
+qb['sevendaycheck']['context'] = {
+           'context':  'sevendaycheck',     # STR Name of context (ex in list)
+           'dataProvided':   True,              # BOOL Was data provided
+           'data': {                            # DICT Data if provided
+               'takeaway': contextResult,              # STR Context takeaway (weather specific)
+               'passedData': vars['weather']['7week'],          # OBJ Extra data if passed
+               'listenfor': True,               # BOOL Check if listening for possible contextual requests
+               'listenforkeys': listeningKeys    # LIST List of keys for listening handler to listen for
+               },
+          }
 
 
 qb['fivedaycheck'] = {}
@@ -157,10 +216,53 @@ qb['fivedaycheck']['keys'] = ["what is the five day forecast", "what is it like 
 qb['fivedaycheck']['require'] = ["five", "5-day"]
 def fiveDayCheck(keywords, info=False, info2=False, info3=False, info4=False):
     phrase = fc.forecast(forecastType="5day")
+    global day5
+    day5 = phrase
     uni.speak(phrase)
     return True
 qb['fivedaycheck']['function'] = fiveDayCheck
-
+qb['fivedaycheck']['context'] = {
+           'context':  'fivedaycheck',     # STR Name of context (ex in list)
+           'dataProvided':   True,              # BOOL Was data provided
+           'data': {                            # DICT Data if provided
+               'takeaway': contextResult,              # STR Context takeaway (weather specific)
+               'passedData': vars['weather']['5week'],          # OBJ Extra data if passed
+               'listenfor': True,               # BOOL Check if listening for possible contextual requests
+               'listenforkeys': listeningKeys    # LIST List of keys for listening handler to listen for
+               },
+          }
+def fiveDayContext(keywords, info=False, info2=False):
+    for day in vars['weather']['5day']:
+        if vars['weather']['5day'][day]['day'].lower() in keywords:
+            trueDay = vars['weather']['5day'][day]
+            details = ["uv", "uv reading", "chance of rain", "chance of snow", "pressure", "barometric pressure", "atmospheric pressure", 
+            "wind speed", "wind gust", "wind direction", "precipitation", "temperature", "temperatures", "feelslike", "feels like",
+            "weather", "forecast", "detail", "details", "happening"]
+            if "uv" in keywords:
+                uni.speak(uni.choose([
+                    f"The UV reading for {trueDay['day']} is currently expected at {trueDay['details']['uv']}.",
+                    f"The UV reading for {trueDay['day']} is forecasted at {trueDay['details']['uv']}.",
+                    f"{trueDay['day']} is currenly expected to have a UV reading of {trueDay['details']['uv']}."
+                ]))
+            elif "pressure" in keywords:
+                success = pressureOutside(False, direct=trueDay)
+                uni.speak(success)
+            elif "wind" in keywords:
+               pass 
+            elif "rain" in keywords or "precipitation" in keywords:
+                if trueDay['details']['popType']:
+                    uni.speak(uni.choose([
+                        f"There is currently a {trueDay['details']['pop']}% chance of {trueDay['details']['popType'][0]}.",
+                        f"For {trueDay['day']}, expect a {trueDay['details']['pop']}% chance of {trueDay['details']['popType'][0]}.",
+                        f"I am forecasting a {trueDay['details']['pop']}% chance of {trueDay['details']['popType'][0]} on {trueDay['day']}."
+                    ]))
+                else:
+                    uni.speak(uni.choose([
+                        f"I don't see a chance of rain or precipitation on {trueDay['day']}.",
+                        f"I am not currently forecasting a chance of rain on {trueDay['day']}.",
+                        f"I do not currently see any chance of {uni.choose(['precipitation', 'rain'])} on {trueDay['day']}."
+                    ]))
+qb['fivedaycheck']['context']['data']['function'] = fiveDayContext
 
 
 def process(keywords, info=False, info2=False, info3=False, info4=False, override=False):
@@ -200,6 +302,7 @@ def process(keywords, info=False, info2=False, info3=False, info4=False, overrid
         for choice in questionChoices:
             if choice[1] == largestNumber and not debounce:
                 success = qb[choice[0]]['function'](keywords, info, info2, info3, info4)
+                uni.makeContext(qb[choice[0]]['context'])
                 debounce = True
 
         if success:

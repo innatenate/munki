@@ -1,6 +1,7 @@
 from weather import command as weatherkeys
 from questions import command as questionkeys
 from universal import vars as vari
+from universal import uniutils as uni
 import query
 
 
@@ -25,7 +26,7 @@ def analyze(keywords, question, type="direct"):
 
 
 def process(keys, literal):
-    if not query.vars['queryActive']:
+    if not query.vars['queryActive'] and (not vari.context['recentContext'] or not vari.context['recentContext']['data']['listenfor']):
         weatherCands = []
         for key in weatherkeys.keys:
             success = analyze(keys,key)
@@ -42,6 +43,11 @@ def process(keys, literal):
         elif len(questCands) > len(weatherCands):
             questionkeys.process(keys, literal)
         else:
+            uni.speak(uni.choose([
+                "I couldn't process that through my normal keyword detection. I am going to override my scoring and try again.",
+                "I couldn't find an answer in my normal detection. I will override detection and try again.",
+                "I couldn't find an answer under normal specification. I will override typical guidelines and try again."
+            ]))
             bestGuess = 0 
             winner = ""
             for key in weatherkeys.keys:
@@ -61,3 +67,36 @@ def process(keys, literal):
                 questionkeys.process(keys,literal,override=True)
             else:
                 print("No result")
+    elif vari.context['recentContext']:
+        context = vari.context['recentContext']
+        keystoListen = context['data']['listenforkeys']
+        success = False
+        for keysListen in keystoListen:
+            success = analyze(keys, keysListen)
+            if success:
+                context['data']['passedFunction'](keys, literal)
+        if not success:
+            if vari.context['pastContext']:
+                for context in vari.context['pastContext']:
+                    context = vari.context['recentContext']
+                    keystoListen = context['data']['listenforkeys']
+                    success = False
+                    for keysListen in keystoListen:
+                        success = analyze(keys, keysListen)
+                        if success:
+                            context['data']['passedFunction'](keys, literal)
+                            break 
+                    if success:
+                        break
+            #                                   context dict example
+    #   'recentcontext': {
+    #       'context':  'asked7dayforecast',     # STR Name of context (ex in list)
+    #       'dataProvided':   True,              # BOOL Was data provided
+    #       'data': {                            # DICT Data if provided
+    #           'takeaway': 'fair',              # STR Context takeaway (weather specific)
+    #           'spokenstr': 'The seven-day...', # STR The spoken string if provided
+    #           'passedData': forecast,          # OBJ Extra data if passed
+    #           'listenfor': False               # BOOL Check if listening for possible contextual requests
+    #           'listenforkeys': ["pressure"]    # LIST List of keys for listening handler to listen for
+    #           },
+    #       }/

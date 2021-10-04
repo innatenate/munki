@@ -40,6 +40,10 @@ phrases = {
     'pastPhrases':[],
     'phraseLimit':5
 }
+
+syonyms = {
+    "expect":['anticipate', 'look for', 'look forward too', 'figure', 'reckon'],
+}
 #while time.sleep(weather['updateInterval']):
 #    weather['lastUpdate'] = datetime.now()
 #    weatherResult = forecast.update("all")

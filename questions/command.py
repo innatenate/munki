@@ -12,6 +12,8 @@ api = NewsApiClient(api_key="efe6facd2ffc41d7b4744391e34ff068")
 keys = []
 qb = {}
 
+report = None
+
 ### Weather: Questionbank
 ###     'temp' :  Question
 ###             'keys'  :   ['what is the current temperature', 'what does it feel like outside', 'what is the temperature outside']
@@ -32,7 +34,11 @@ def timeCheck(keywords, data=False, passedValue=False):
     uni.speak(phrase)
     return True
 qb['timecheck']['function'] = timeCheck
-
+qb['timecheck']['context'] = {
+           'context':  'timecheck',     # STR Name of context (ex in list)
+           'dataProvided':   False,              # BOOL Was data provided
+           'data': None
+          }
 
 qb['repeat'] = {}
 qb['repeat']['keys'] = ['repeat', 'say again', 'repeat that', 'say that again']
@@ -43,6 +49,11 @@ def repeat(keywords, data=False, passedValue=False):
     uni.speak(phrase)
     return True
 qb['repeat']['function'] = repeat
+qb['repeat']['context'] = {
+           'context':  'repeat',     # STR Name of context (ex in list)
+           'dataProvided':   False,              # BOOL Was data provided
+           'data': None
+          }
 
 
 qb['newscheck'] = {}
@@ -78,8 +89,22 @@ def newsCheck(keywords, data=False, passedValue=False):
                     f"On {results[2]['author']} I found an article on {results[2]['desc']} \n \n \n" +
                     f"{results[3]['author']} reports {results[3]['desc']} \n \n" +
                     f"And lastly, {results[4]['author']} wrote an article recently on {results[4]['desc']}")
+    global report
+    report = results
     return True
 qb['newscheck']['function'] = newsCheck
+qb['newscheck']['context'] = {
+           'context':  'newscheck',     # STR Name of context (ex in list)
+           'dataProvided':   True,              # BOOL Was data provided
+           'data': {                            # DICT Data if provided
+               'takeaway': None,              # STR Context takeaway (weather specific)
+               'spokenstr': None, # STR The spoken string if provided
+               'passedData': report,          # OBJ Extra data if passed
+               'listenfor': None,               # BOOL Check if listening for possible contextual requests
+               'listenforkeys': None    # LIST List of keys for listening handler to listen for
+               },
+          }
+
 
 qb['datecheck'] = {}
 qb['datecheck']['keys'] = ["what is today numerical", "what is today's date", "what is the date today"]
@@ -89,6 +114,11 @@ def dateCheck(keywords, data=False, passedValue=False):
 
     return True
 qb['datecheck']['function'] = dateCheck
+qb['datecheck']['context'] = {
+           'context':  'datecheck',     # STR Name of context (ex in list)
+           'dataProvided':   False,              # BOOL Was data provided
+           'data': None
+          }
 
 
 def mathCheck(keywords):
@@ -148,6 +178,7 @@ def process(keywords, info, passedValue=False, client=False, override=False):
         for choice in questionChoices:
             if choice[1] == largestNumber and not debounce:
                 success = qb[choice[0]]['function'](keywords, info, passedValue)
+                uni.makeContext(qb[choice[0]]['context'])
                 debounce = True
 
         if success:

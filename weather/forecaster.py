@@ -307,7 +307,7 @@ def phrase7Build(day):
     beginPhrase = ""                                                                                                    ## BEGIN PHRASE ASSIGNMENT
     if day["daynum"] == 0:
         beginPhrase = uni.choose(
-            [f"For {day['day']}, expect temperatures ranging around {day['temps']['day']}° with a feels like of {day['temps']['fl']}°.",
+            [f"For {day['day']}, expect temperatures ranging around {day['temps']['day']}°",
              f"On {day['day']}, plan for temperatures around {day['temps']['day']}° and a feels like of {day['temps']['fl']}°.",
              f"To begin my forecast, on {day['day']} I am predicting temps around {day['temps']['day']}° and feels like temps around {day['temps']['fl']}°."])
     elif 0 < day["daynum"] < 6:
