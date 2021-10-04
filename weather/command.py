@@ -228,6 +228,27 @@ def weatherOutsideContext(keywords, literal):
 qb['weatheroutside']['context']['data']['function'] = weatherOutsideContext
 
 
+qb['currentcheck'] = {}
+qb['currentcheck']['keys'] = []
+qb['currentcheck']['whitelist'] = []
+def currentCheck(keywords, info=False, info2=False, info3=False, info4=False):
+    phrase = fc.forecast(forecastType="current")
+    uni.speak(phrase)
+    return True
+qb['currentcheck']['function'] = currentCheck
+qb['currentcheck']['context'] = {
+           'context':  'currentcheck',     # STR Name of context (ex in list)
+           'dataProvided':   True,              # BOOL Was data provided
+           'data': {                            # DICT Data if provided
+               'takeaway': contextResult,              # STR Context takeaway (weather specific)
+               'passedData': vars.weather['current'],          # OBJ Extra data if passed
+               'listenfor': False,               # BOOL Check if listening for possible contextual requests
+               'listenforkeys': None    # LIST List of keys for listening handler to listen for
+               },
+          }
+
+
+
 qb['tomorrowcheck'] = {}
 qb['tomorrowcheck']['keys'] = ["what is the weather tomorrow", "what is tomorrow's weather", "what is tomorrows weather"]
 qb['tomorrowcheck']['require'] = ['tomorrow', "tomorrow's", "tomorrows"]

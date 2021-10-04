@@ -5,7 +5,7 @@ import datetime
 from universal import vars as universal
 import calendar
 
-weeklyData = "https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/2205%20West%20Canton%20Pl?unitGroup=us&key=BHFCCKY362XGLDYMK3FRKYZHB&include=obs%2Cfcst%2Cstats%2Chistfcst"
+weeklyData = "https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/2205%20West%20Canton%20Pl?unitGroup=us&key=BHFCCKY362XGLDYMK3FRKYZHB&include=obs%2Cfcst%2Calerts%2Ccurrent"
 weeklyDataJSON = None
 
 highPressureThresh = 1018
