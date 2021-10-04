@@ -268,12 +268,10 @@ def data7Process():
     day6 = weeklyDataJSON['days'][6]
     day7 = weeklyDataJSON['days'][7]
     week = [day1, day2, day3, day4, day5, day6, day7]
-    for day in week:
-        day['raw'] = True
     returnWeek = []
     for day in week:
         if 'zizdent' not in day:
-            dayName = unitconv.getDay(week.index(day)) or unitconv.getDate("name")
+            dayName = unitconv.getDay(week.index(day))
             trueDegree = unitconv.degreeTranslate(day['winddir'])
             returnDay = {
                 "zizdent":True,
@@ -579,7 +577,6 @@ def forecast7Init(forecastUpdate):
     
     weekPhrase = intro + weeklyDataJSON["description"] + " " + weekPhrase
 
-    uni.makeContext("sevendayforecast",True,resultContext, passedData=weekPhrase)
     return weekPhrase
 
 
@@ -896,7 +893,6 @@ def forecast5Init(forecastUpdate):
     
     weekPhrase = intro + weeklyDataJSON["description"] + " " + weekPhrase
 
-    uni.makeContext("fivedayforecast",True,resultContext, passedData=weekPhrase)
     return weekPhrase
 
 
@@ -908,28 +904,28 @@ def forecastDetail(info):
 
     if context == "differentday":
         trueDay = data['day']
-        if vars.weather['7day']:
+        if vars.weather['7week']:
             noResult = True
-            for day in vars.weather['7day']:
+            for day in vars.weather['7week']:
                 if 'day' in day:
                     if day == trueDay:
                         noResult = False
                         if detail == "temperatures":
-                            return vars.weather['7day'][day]['temps']
+                            return vars.weather['7week'][day]['temps']
                         elif detail == "pressure": 
-                            return vars.weather['7day'][day]['details']['pressure']
+                            return vars.weather['7week'][day]['details']['pressure']
                         elif detail == "humidity": 
-                            return vars.weather['7day'][day]['details']['humidity']
+                            return vars.weather['7week'][day]['details']['humidity']
                         elif detail == "dewpoint": 
-                            return vars.weather['7day'][day]['details']['dp']
+                            return vars.weather['7week'][day]['details']['dp']
                         elif detail == "clouds": 
-                            return vars.weather['7day'][day]['details']['clouds']
+                            return vars.weather['7week'][day]['details']['clouds']
                         elif detail == "pop": 
-                            return vars.weather['7day'][day]['details']['pop']
+                            return vars.weather['7week'][day]['details']['pop']
                         elif detail == "poptype": 
-                            return vars.weather['7day'][day]['details']['poptype']
+                            return vars.weather['7week'][day]['details']['poptype']
                         elif detail == "weather": 
-                            return vars.weather['7day'][day]['forecast']
+                            return vars.weather['7week'][day]['forecast']
                         else:
                             noResult = True
             if noResult == True:

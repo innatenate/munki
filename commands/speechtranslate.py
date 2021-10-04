@@ -33,7 +33,7 @@ def getDate(var):
     if var == "name":
         currentdate = datetime.date.today()
         currentdate = calendar.day_name[currentdate.weekday()]
-        return currentdate
+        return str(currentdate)
 
 def getDay(num):
     currentdate = datetime.date.today()
@@ -53,6 +53,8 @@ def getDay(num):
             return "Sunday"
         elif num == 7:
             return "Next Monday"
+        else:
+            return getDate("name")            
     elif currentdate == "Tuesday":
         if num == 7:
             return "Next Tuesday"
@@ -68,6 +70,8 @@ def getDay(num):
             return "Sunday"
         elif num == 6:
             return "Monday"
+        else:
+            return getDate("name")            
     elif currentdate == "Wednesday":
         if num == 6:
             return "Tuesday"
@@ -83,6 +87,8 @@ def getDay(num):
             return "Sunday"
         elif num == 5:
             return "Monday"
+        else:
+            return getDate("name")            
     elif currentdate == "Thursday":
         if num == 5:
             return "Tuesday"
@@ -98,6 +104,8 @@ def getDay(num):
             return "Sunday"
         elif num == 4:
             return "Monday"
+        else:
+            return getDate("name")            
     elif currentdate == "Friday":
         if num == 4:
             return "Tuesday"
@@ -113,6 +121,8 @@ def getDay(num):
             return "Sunday"
         elif num == 3:
             return "Monday"
+        else:
+            return getDate("name")            
     elif currentdate == "Saturday":
         if num == 3:
             return "Tuesday"
@@ -128,6 +138,8 @@ def getDay(num):
             return "Sunday"
         elif num == 2:
             return "Monday"
+        else:
+            return getDate("name")            
     elif currentdate == "Sunday":
         if num == 2:
             return "Tuesday"
@@ -143,3 +155,7 @@ def getDay(num):
             return "Next Sunday"
         elif num == 1:
             return "Monday"
+        else:
+            return getDate("name")
+    else:
+        return getDate("name")

@@ -36,7 +36,6 @@ def speak(sentence):
 
 
 def makeContext(newContext):
-
     if vars.context['recentContext']:
         if vars.context['pastContext']:
             vars.context['pastContext'].append(vars.context['recentContext'])
@@ -46,3 +45,6 @@ def makeContext(newContext):
             vars.context['pastContext'].pop(len(vars.context['pastContext'])-1)
 
     vars.context['recentContext'] = newContext
+
+    print(vars.context['recentContext'])
+    print("success")

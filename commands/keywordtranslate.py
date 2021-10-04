@@ -25,8 +25,38 @@ def analyze(keywords, question, type="direct"):
             return points,question      
 
 
+def contextCheck(keys, literal):
+    print(vari.context['recentContext'])
+    if vari.context['recentContext']:
+        print("processing as context")
+        context = vari.context['recentContext']
+        keystoListen = context['data']['listenforkeys']
+        success = False
+        for keysListen in keystoListen:
+            success = analyze(keys, keysListen)
+            if success:
+                context['data']['function'](keys, literal)
+        if not success:
+            if vari.context['pastContext']:
+                for context in vari.context['pastContext']:
+                    context = vari.context['recentContext']
+                    keystoListen = context['data']['listenforkeys']
+                    success = False
+                    for keysListen in keystoListen:
+                        success = analyze(keys, keysListen)
+                        if success:
+                            context['data']['function'](keys, literal)
+                            return True 
+                    if success:
+                        return True
+        return False
+    else: 
+        return False
+
+
 def process(keys, literal):
-    if not query.vars['queryActive'] and (not vari.context['recentContext'] or not vari.context['recentContext']['data']['listenfor']):
+    if not query.vars['queryActive'] and not contextCheck(keys, literal):
+        print("processing normal")
         weatherCands = []
         for key in weatherkeys.keys:
             success = analyze(keys,key)
@@ -67,27 +97,6 @@ def process(keys, literal):
                 questionkeys.process(keys,literal,override=True)
             else:
                 print("No result")
-    elif vari.context['recentContext']:
-        context = vari.context['recentContext']
-        keystoListen = context['data']['listenforkeys']
-        success = False
-        for keysListen in keystoListen:
-            success = analyze(keys, keysListen)
-            if success:
-                context['data']['passedFunction'](keys, literal)
-        if not success:
-            if vari.context['pastContext']:
-                for context in vari.context['pastContext']:
-                    context = vari.context['recentContext']
-                    keystoListen = context['data']['listenforkeys']
-                    success = False
-                    for keysListen in keystoListen:
-                        success = analyze(keys, keysListen)
-                        if success:
-                            context['data']['passedFunction'](keys, literal)
-                            break 
-                    if success:
-                        break
             #                                   context dict example
     #   'recentcontext': {
     #       'context':  'asked7dayforecast',     # STR Name of context (ex in list)
