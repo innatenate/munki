@@ -22,7 +22,9 @@ def checkforSyn(string):
                 print("replacement")
                 string = string.replace(word, choose(synonyms.synonyms[word]), random.randrange(1,4))
         for word in synonyms.wordReplacement:
-            pass
+            choice = random.choice([True, False, True])
+            if choice:
+                string = string.replace(word, choose(synonyms.wordReplacement[word]))
     print(string)
     return string
     

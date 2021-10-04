@@ -16,11 +16,15 @@ def analyze(keywords, question, type="direct"):
     if points > (len(keywords) * .74) or points > (len(question) * .74):
         if type=="direct":
             return True, None
+        elif type=="pointsandbool":
+            return True, points, question
         else:
             return points,question
     else:
         if type=="direct":
             return False, None
+        elif type=="pointsandbool":
+            return False, points, question
         else:
             return points,question      
 
