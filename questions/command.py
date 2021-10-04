@@ -24,7 +24,7 @@ report = None
 qb['timecheck'] = {}
 qb['timecheck']['keys'] = ["what is the time", "what is the current time", "what time is it"]
 qb['timecheck']['require'] = ["time"]
-def timeCheck(keywords, data=False, passedValue=False):
+def timeCheck(keywords, info=False, info2=False, info3=False, info4=False,):
     now = datetime.datetime.now()
     phrase = uni.choose([f"The current time is {now.strftime('%I:%M %p')}.",
                              f"It's currently {now.strftime('%I:%M %p')}.",
@@ -42,7 +42,7 @@ qb['timecheck']['context'] = {
 
 qb['repeat'] = {}
 qb['repeat']['keys'] = ['repeat', 'say again', 'repeat that', 'say that again']
-def repeat(keywords, data=False, passedValue=False):
+def repeat(keywords, info=False, info2=False, info3=False, info4=False,):
     phrase = uni.choose(["I said, ", "No problem, I said", "Alright, "])
     phrase += "             " + vars.phrases['lastPhrase']
 
@@ -59,7 +59,7 @@ qb['repeat']['context'] = {
 qb['newscheck'] = {}
 qb['newscheck']['keys'] = ["what is today's news", "what is the news for today", "what is happening",
                            "what is the daily news", "what's the news"]
-def newsCheck(keywords, data=False, passedValue=False):
+def newsCheck(keywords, info=False, info2=False, info3=False, info4=False,):
     results = api.get_top_headlines(country="us", page_size=5)
     results = [
         {
@@ -108,7 +108,7 @@ qb['newscheck']['context'] = {
 
 qb['datecheck'] = {}
 qb['datecheck']['keys'] = ["what is today numerical", "what is today's date", "what is the date today"]
-def dateCheck(keywords, data=False, passedValue=False):
+def dateCheck(keywords, info=False, info2=False, info3=False, info4=False,):
     now = datetime.datetime.now()
     uni.speak(f"Today is {now.strftime('%A    , %B %d     %Y')}")
 
@@ -143,11 +143,9 @@ def calculate(keywords):
         return False, False
 
 
-def process(keywords, info, passedValue=False, client=False, override=False):
-    """Process question commands, needs keywords(list) and can take a passedValue(any)"""
-
+def process(keywords, info=False, info2=False, info3=False, info4=False, override=False):
+    print('processing question')
     questionChoices = []
-
     for question in qb:
         phrases = qb[question]['keys']
         for phrase in phrases:
@@ -158,6 +156,9 @@ def process(keywords, info, passedValue=False, client=False, override=False):
                 if pword in keywords:
                     if 'require' in qb[question]:
                         for word in keywords:
+                            if 'whitelist' in qb[question]:
+                                if word in qb[question]['whitelist']:
+                                    points -= 100
                             if word in qb[question]['require']:
                                 truePass = True
                         if truePass:
@@ -171,46 +172,25 @@ def process(keywords, info, passedValue=False, client=False, override=False):
 
     if len(questionChoices) > 0:
         largestNumber = 0
+
         for choice in questionChoices:
             if largestNumber < choice[1]:
                 largestNumber = choice[1]
+
         debounce = False
         for choice in questionChoices:
             if choice[1] == largestNumber and not debounce:
-                success = qb[choice[0]]['function'](keywords, info, passedValue)
                 uni.makeContext(qb[choice[0]]['context'])
+                success = qb[choice[0]]['function'](keywords, info, info2, info3, info4)
                 debounce = True
 
         if success:
             return True
         else:
             return False
-    else:
-        if ("what" in keywords or "what's" in keywords) and mathCheck(keywords):
-            answer, problem = calculate(keywords)
-            if not answer:
-                phrase = uni.choose(["I couldn't seem to find an answer to that math problem.",
-                                         "I couldn't calculate the correct answer.",
-                                         "Something didn't process correctly with that equation."])
-            else:
-                phrase = uni.choose([f"The answer to {problem} is {answer}.",
-                                         f"When I processed {problem}, I concluded {answer}.",
-                                         f"I calculated {problem} with the end result of {answer}."])
 
-            uni.speak(phrase)
-            return True
-        else:
-            return Exception("No result")
-            # answer = searchparser.search(originaltext)
-            # if answer:
-            # if 'snippet' in answer:
-            # uni.speak(f"I searched that for you. {answer['answer']}. I also have more information, "
-            # f"{answer['snippet']}")
-            # elif 'answer' in answer:
-            # uni.speak(f"I searched that for you.  {answer['answer']}.")
-            # elif 'error' in answer:
-            # uni.speak(answer['error'])
-            # return True
+    else:
+        return False
 
 for function in qb:
     for key in qb[function]['keys']:

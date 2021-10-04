@@ -6,6 +6,7 @@ import time
 from universal import uniutils as uni
 from universal import vars
 from weather import forecaster as fc
+from commands import keywordtranslate as kw
 
 keys = []
 qb = {}
@@ -18,17 +19,39 @@ contextResult = None
 details = ["uv", "uv reading", "chance of rain", "chance of snow", "pressure", "barometric pressure", "atmospheric pressure", 
             "wind speed", "wind gust", "wind direction", "precipitation", "temperature", "temperatures", "feelslike", "feels like",
             "weather", "forecast", "detail", "details", "happening"]
-
 days =  ["saturday", "sunday", "monday", "thursday", "friday", "wednesday", "tuesday"]
-
+current = ["currently", "current", "outside"]
 listeningKeys = []
+todayKeys = ["do you think it will rain soon", "will it rain today", "is there a chance of rain today",
+                           "will it precipitate today", "could it rain precipitate today", "raining today",
+                           "is it going to rain today", "going rain soon today", "what is this precipitation chance",
+                           "what is the high today", "what is the low today", "is it going to be hot today",
+                             "is it hot outside today", "is it cold outside today", "should i wear a jacket today",
+                             "is it going to be hot today", "is it going to be cold today"]
+currentKeys = []
 
 for detail in details:
     for day in days:
         listeningKeys.append(f"what is the {detail} for {day}")
+        listeningKeys.append(f"whats the {detail} for {day}")
         listeningKeys.append(f"{detail} for {day}")
         listeningKeys.append(f"{detail} on {day}")
         listeningKeys.append(f"what is the {detail} on {day}")
+        listeningKeys.append(f"whats the {detail} on {day}")
+    todayKeys.append(f"what is the {detail} for today")
+    todayKeys.append(f"whats the {detail} for today")
+    todayKeys.append(f"{detail} for today")
+    todayKeys.append(f"{detail} on today")
+    todayKeys.append(f"what is the {detail} on today")
+    todayKeys.append(f"whats the {detail} on today")
+    for currents in current:
+        currentKeys.append(f"what is the {detail} for {currents}")
+        currentKeys.append(f"whats the {detail} for {currents}")
+        currentKeys.append(f"{detail} for {currents}")
+        currentKeys.append(f"{detail} on {currents}")
+        currentKeys.append(f"what is the {detail} on {currents}")
+        currentKeys.append(f"whats the {detail} on {currents}")
+
 
 
 
@@ -39,34 +62,7 @@ for detail in details:
 
 
 
-qb['weatheroutside'] = {}
-qb['weatheroutside']['keys'] = ["what weather today", "what weather outside" , "what's the current weather",
-                                "what's the weather outside", "what does it feel like outside", "what is the weather today",
-                                "What's today's weather", "what is weather outside currently"]
-qb["weatheroutside"]['require'] = ["outside", "today", "weather", "today's", "current"]
-qb["weatheroutside"]['whitelist'] = ["week", "tomorrow"]
-def weatherOutside(keywords, info=False, info2=False, info3=False, info4=False):
-    phrase = fc.forecast(forecastType="today")
-    uni.speak(phrase)
-    return True
-qb['weatheroutside']['function'] = weatherOutside
-qb['weatheroutside']['context'] = {
-           'context':  'weatheroutside',     # STR Name of context (ex in list)
-           'dataProvided':   True,              # BOOL Was data provided
-           'data': {                            # DICT Data if provided
-               'takeaway': contextResult,              # STR Context takeaway (weather specific)
-               'passedData': vars.weather['day'],          # OBJ Extra data if passed
-               'listenfor': False,               # BOOL Check if listening for possible contextual requests
-               'listenforkeys': None    # LIST List of keys for listening handler to listen for
-               },
-          }
-
-
-qb['tempoutside'] = {}
-qb['tempoutside']['keys'] = ["what is the high today", "what is the low today", "is it going to be hot today",
-                             "is it hot outside today", "is it cold outside today", "should i wear a jacket today",
-                             "is it going to be hot today", "is it going to be cold today"]
-def tempOutside(keywords, info=False, info2=False, info3=False, info4=False):
+def tempOutside():
     temperatures = fc.forecast(forecastType="detail", detail={'details':"temperatures", 'context':"today"})
     fl = temperatures['fl']
     main = temperatures['day']
@@ -85,24 +81,25 @@ def tempOutside(keywords, info=False, info2=False, info3=False, info4=False):
         context = uni.choose(["scorching", "boiling", "borderline-tropical", "sweltering", "ovenlike", "torrid"])
 
     phrase = uni.choose([
-        f"It seems {context} outside right now, with temperatures around {main}° and feels like around {fl}°.",
-        f"It's {context} outsied right now. Temperatures are around {main}° and feels like around {fl}°.",
-        f"Temperatures outside are expected around {main}° with a feels like of {fl}°. Expect it to be a {context} day.",
-        f"Expect temperatures around {main}° and feels like around {fl}°."
+        f"It seems {context} outside right now, with temperatures around {main}°**.",
+        f"It's {context} outside right now. Temperatures are around {main}°**.",
+        f"Temperatures outside are expected around {main}°**. Expect it to be a {context} day.",
+        f"Expect temperatures around {main}°**."
     ])
 
+    difference = main - fl
+    if difference > 2 or difference < -2:
+        phrase = phrase.replace("**", "")
+    else:
+        phrase = phrase.replace("**", uni.choose([
+            f" with a feels like of {fl}°",
+            f" and feels like around {fl}°",
+        ]))
     uni.speak(phrase)
 
     return True
-qb['tempoutside']['function'] = tempOutside
 
-
-qb['raincheck'] = {}
-qb['raincheck']['keys'] = ["do you think it will rain soon", "will it rain today", "is there a chance of rain today",
-                           "will it precipitate today", "could it rain precipitate today", "raining today",
-                           "is it going to rain today", "going rain soon today", "what is this precipitation chance"]
-qb['raincheck']['require'] = ["rain", "precipitate", "raining"]
-def rainCheck(keywords, info=False, info2=False, info3=False, info4=False): 
+def rainCheck(): 
     pop = fc.forecast(forecastType="detail", detail={'details':"pop", 'context':"today"})
     if pop > 10:
         phrase = uni.choose([
@@ -130,17 +127,13 @@ def rainCheck(keywords, info=False, info2=False, info3=False, info4=False):
             f'I do not see a possibility of {uni.choose(["precipitation", "rain"])} today.',
             f'I am not currently forecasting any {uni.choose(["precipitation", "rain"])} today.'
         ])
-    
-    uni.speak(phrase)
-    return True
-qb['raincheck']['function'] = rainCheck
+    if len(phrase) > 0:
+        uni.speak(phrase)
+        return True
+    else:
+        return False
 
-
-qb['pressureoutside']= {}
-qb['pressureoutside']['keys'] = ["what atmosphere changes", "what atmosphere pressure", "what barometric pressure",
-                                 "what is the atmospheric pressure"]
-qb['pressureoutside']['require'] = ["barometric", "atmosphere", "atmospheric", "pressure"]
-def pressureOutside(keywords, info=False, info2=False, info3=False, info4=False, direct=False):
+def pressureOutside(arg=False,direct=False):
     if not direct:
         pressure = fc.forecast(forecastType="detail", detail={'details':"pressure", 'context':"today"})
     else:
@@ -167,7 +160,106 @@ def pressureOutside(keywords, info=False, info2=False, info3=False, info4=False,
         phrase = phrase.replace("--", "current")
         uni.speak(phrase)
         return True
-qb['pressureoutside']['function'] = pressureOutside
+
+
+
+qb['weatheroutside'] = {}
+qb['weatheroutside']['keys'] = ["what weather today",  "what is the weather today", "what's today's weather", "what's today's weather like", "what is today's weather like"]
+qb["weatheroutside"]['require'] = ["outside", "today", "today's"]
+qb["weatheroutside"]['whitelist'] = ["week", "tomorrow"]
+def weatherOutside(keywords, info=False, info2=False, info3=False, info4=False):
+    phrase = fc.forecast(forecastType="today")
+    uni.speak(phrase)
+    return True
+qb['weatheroutside']['function'] = weatherOutside
+qb['weatheroutside']['context'] = {
+           'context':  'weatheroutside',     # STR Name of context (ex in list)
+           'dataProvided':   True,              # BOOL Was data provided
+           'data': {                            # DICT Data if provided
+               'takeaway': contextResult,              # STR Context takeaway (weather specific)
+               'passedData': vars.weather['day'],          # OBJ Extra data if passed
+               'listenfor': True,               # BOOL Check if listening for possible contextual requests
+               'listenforkeys': todayKeys,    # LIST List of keys for listening handler to listen for
+               'whitelist': ['tomorrow', 'currently', 'current']
+               },
+          }
+def weatherOutsideContext(keywords, literal):
+    possible = {}
+    highest = 0
+    success = False
+    for keys in todayKeys:
+        success, points, question = kw.analyze(keywords, keys, type="pointsandbool")
+        if success:
+            possible[str(todayKeys.index(keys))] = {
+                'points' : points,
+                'keys' : keys}
+            if points > highest:
+                highest = points
+
+    if len(possible) > 0:
+        for poss in possible:
+            print(poss)
+            if (not type(possible) is str) and possible[poss]['points'] == highest:
+                possible = possible[poss]['keys']
+                break
+            else:
+                print("no result")
+    day = vars.weather['day']
+    if 'pressure' in possible or 'barometric' in possible or 'atmospheric' in possible or 'atmosphere' in possible:
+        pressureOutside()
+        success = True
+    elif 'rain' in possible or 'snow' in possible or 'precipitation' in possible or 'umbrella' in possible or 'raining' in possible:
+        rainCheck()
+        success = True
+    elif 'cold' in possible or 'jacket' in possible or 'hot' in possible or 'high' in possible or 'low' in possible or 'temperature' in possible or 'temp' in possible or 'temps' in possible or 'temperatures' in possible or 'feels-like' in possible or ('feels' in possible and 'like' in possible):
+        tempOutside()
+        success = True
+    elif 'uv' in possible:
+        uni.speak(uni.choose([
+            f"The UV reading for today is {day['details']['uvi']}.",
+            f"The UV reading for today is currently forecasted at {day['details']['uvi']}.",
+            f"There is currently a forecasted UV reading of {day['details']['uvi']} for today."
+        ]))
+        success = True
+    elif 'wind' in possible:
+        uni.speak(uni.choose([
+            f"The forecasted wind for {day['day']} is expected at {day['details']['windspeed']} mph {day['details']['winddir']}.",
+            f"Expect {day['details']['windspeed']} mph {day['details']['winddir']} on {day['day']}.",
+            f"The forecasted windspeeds for {day['day']} is expected at {day['details']['windspeed']} mph {day['details']['winddir']}."]))
+        success = True
+    elif 'weather' in possible or 'forecast' in possible or 'details' in possible or 'detail' in possible:
+        uni.speak(uni.choose([
+            f"Expect {day['forecast']['basic']} on {day['day']}.",
+            f"I am forecasting {day['forecast']['basic']} {uni.choose(['for', 'on'])} {day['day']}.",
+            f"For {day['day']} my forecast reads, {day['forecast']['details']}",
+        ]))
+        success = True
+    return success
+qb['weatheroutside']['context']['data']['function'] = weatherOutsideContext
+
+
+qb['currentcheck'] = {}
+qb['currentcheck']['keys'] = ["what's the weather outside", "what weather outside", "what's the current weather", 
+                                "what does it feel like outside", "what is weather outside currently", "what does it feel like",
+                                "what's the weather ouside currently"]
+qb['currentcheck']['require'] = ["outside", "currently", "current"]
+qb['currentcheck']['whitelist'] = ["today", "tomorrow", "5-day", "7-day", "seven", "five"]
+def currentCheck(keywords, info=False, info2=False, info3=False, info4=False):
+    phrase = fc.forecast(forecastType="current")
+    uni.speak(phrase)
+    return True
+qb['currentcheck']['function'] = currentCheck
+qb['currentcheck']['context'] = {
+           'context':  'currentcheck',     # STR Name of context (ex in list)
+           'dataProvided':   True,              # BOOL Was data provided
+           'data': {                            # DICT Data if provided
+               'takeaway': contextResult,              # STR Context takeaway (weather specific)
+               'passedData': vars.weather['current'],          # OBJ Extra data if passed
+               'listenfor': False,               # BOOL Check if listening for possible contextual requests
+               'listenforkeys': None    # LIST List of keys for listening handler to listen for
+               },
+          }
+
 
 
 qb['tomorrowcheck'] = {}
@@ -191,6 +283,8 @@ qb['tomorrowcheck']['context'] = {
                },
           }
 
+
+
 qb['sevendaycheck'] = {}
 qb['sevendaycheck']['keys'] = ["what is the seven day forecast", "what is it like this week", "what the 7-day forecast",
                                "what is the 7-day forecast this week", "what is the weather this week", "what's the weather this week",
@@ -213,7 +307,106 @@ qb['sevendaycheck']['context'] = {
           }
 def sevenDayContext(keywords, info=False, info2=False):
     print("processing context")
+    success = False
     for day in vars.weather['7week']['weather']:
+        dayStr = day['day']
+        print(dayStr)
+        if dayStr.lower() in keywords:
+            trueDay = day
+            if "uvi" in keywords:
+                uni.speak(uni.choose([
+                    f"The UV reading for {trueDay['day']} is currently expected at {trueDay['details']['uvi']}.",
+                    f"The UV reading for {trueDay['day']} is forecasted at {trueDay['details']['uvi']}.",
+                    f"{trueDay['day']} is currenly expected to have a UV reading of {trueDay['details']['uvi']}."
+                ]))
+                return True
+            elif "pressure" in keywords:
+                success = pressureOutside(False, direct=trueDay)
+                uni.speak(success)
+                return True
+            elif "wind" in keywords:
+                if trueDay['details']['winddir']:
+                    uni.speak(uni.choose([
+                        f"The forecasted wind for {trueDay['day']} is expected at {trueDay['details']['windspeed']} mph. {trueDay['details']['winddir']}.",
+                        f"Expect {trueDay['details']['windspeed']} mph. {trueDay['details']['winddir']} on {trueDay['day']}.",
+                        f"The forecasted windspeeds for {trueDay['day']} is expected at {trueDay['details']['windspeed']} mph. {trueDay['details']['winddir']}.",
+                    ]))
+                    return True
+                else:
+                    uni.speak(uni.choose([
+                        f"The forecasted wind for {trueDay['day']} is expected at {trueDay['details']['windspeed']} mph.",
+                        f"Expect {trueDay['details']['windspeed']} mph.",
+                        f"The forecasted windspeeds for {trueDay['day']} is expected at {trueDay['details']['windspeed']} mph.",
+                    ]))
+                    return True
+            elif "temperatures" in keywords or "temps" in keywords or "temp" in keywords or "feelslike" in keywords or ("feels" in keywords and "link" in keywords):
+                phrase = uni.choose([
+                    f"The forecasted average temperature for {trueDay['day']} is expected at {trueDay['temps']['day']}°**.",
+                    f"Expect an average of {trueDay['temps']['day']}°** on {trueDay['day']}.",
+                    f"I am currently forecasting an average temperature of {trueDay['temps']['day']}°** on {trueDay['day']}."
+                ])
+                difference = trueDay['temps']['day'] - trueDay['temps']['fl']
+                if difference > 2 or difference < -2:
+                    phrase = phrase.replace("**", "")
+                else:
+                    phrase = phrase.replace("**", uni.choose([
+                        f" with an average feels like temp of {trueDay['temps']['fl']}°",
+                        f" and a feels like temperature of {trueDay['temps']['fl']}°",
+                    ]))
+                uni.speak(phrase)
+                return True
+            elif "weather" in keywords or "details" in keywords or "forecast" in keywords or (("whats" in keywords or "what" in keywords) and "happening" in keywords):
+                uni.speak(uni.choose([
+                    f"Expect {trueDay['forecast']['basic']} on {trueDay['day']}.",
+                    f"I am forecasting {trueDay['forecast']['basic']} {uni.choose(['for', 'on'])} {trueDay['day']}.",
+                    f"For {trueDay['day']} my forecast reads, {trueDay['forecast']['details']}",
+                ]))
+                return True
+            elif "rain" in keywords or "precipitation" in keywords or "snow" in keywords or "ice" in keywords:
+                if trueDay['details']['popType']:
+                    uni.speak(uni.choose([
+                        f"There is currently a {trueDay['details']['pop']}% chance of {trueDay['details']['popType'][0]}.",
+                        f"For {trueDay['day']}, expect a {trueDay['details']['pop']}% chance of {trueDay['details']['popType'][0]}.",
+                        f"I am forecasting a {trueDay['details']['pop']}% chance of {trueDay['details']['popType'][0]} on {trueDay['day']}."
+                    ]))
+                    return True
+                else:
+                    uni.speak(uni.choose([
+                        f"I don't see a chance of rain or precipitation on {trueDay['day']}.",
+                        f"I am not currently forecasting a chance of rain on {trueDay['day']}.",
+                        f"I do not currently see any chance of {uni.choose(['precipitation', 'rain'])} on {trueDay['day']}."
+                    ]))
+                    return True
+    print(keywords)
+    return success
+qb['sevendaycheck']['context']['data']['function'] = sevenDayContext
+
+
+
+qb['fivedaycheck'] = {}
+qb['fivedaycheck']['keys'] = ["what is the five day forecast", "what is it like this week", "what the five forecast",
+                               "what is the 5-day forecast this week", "what is the weather this week", "what's the weather this week",
+                               "what is weekly forecast"]
+qb['fivedaycheck']['require'] = ["five", "5-day"]
+def fiveDayCheck(keywords, info=False, info2=False, info3=False, info4=False):
+    phrase = fc.forecast(forecastType="5day")
+    uni.speak(phrase)
+    return True
+qb['fivedaycheck']['function'] = fiveDayCheck
+qb['fivedaycheck']['context'] = {
+           'context':  'fivedaycheck',     # STR Name of context (ex in list)
+           'dataProvided':   True,              # BOOL Was data provided
+           'data': {                            # DICT Data if provided
+               'takeaway': contextResult,              # STR Context takeaway (weather specific)
+               'passedData': vars.weather['5week'],          # OBJ Extra data if passed
+               'listenfor': True,               # BOOL Check if listening for possible contextual requests
+               'listenforkeys': listeningKeys    # LIST List of keys for listening handler to listen for
+               },
+          }
+def fiveDayContext(keywords, info=False, info2=False):
+    print("processing context")
+    success = False
+    for day in vars.weather['5week']['weather']:
         dayStr = day['day']
         print(dayStr)
         if dayStr.lower() in keywords:
@@ -265,7 +458,7 @@ def sevenDayContext(keywords, info=False, info2=False):
                     f"I am forecasting {trueDay['forecast']['basic']} {uni.choose(['for', 'on'])} {trueDay['day']}.",
                     f"For {trueDay['day']} my forecast reads, {trueDay['forecast']['details']}",
                 ]))
-                break
+                return True
             elif "rain" in keywords or "precipitation" in keywords or "snow" in keywords or "ice" in keywords:
                 if trueDay['details']['popType']:
                     uni.speak(uni.choose([
@@ -282,101 +475,7 @@ def sevenDayContext(keywords, info=False, info2=False):
                     ]))
                     return True
     print(keywords)
-    return True
-qb['sevendaycheck']['context']['data']['function'] = sevenDayContext
-
-
-qb['fivedaycheck'] = {}
-qb['fivedaycheck']['keys'] = ["what is the five day forecast", "what is it like this week", "what the five forecast",
-                               "what is the 5-day forecast this week", "what is the weather this week", "what's the weather this week",
-                               "what is weekly forecast"]
-qb['fivedaycheck']['require'] = ["five", "5-day"]
-def fiveDayCheck(keywords, info=False, info2=False, info3=False, info4=False):
-    phrase = fc.forecast(forecastType="5day")
-    uni.speak(phrase)
-    return True
-qb['fivedaycheck']['function'] = fiveDayCheck
-qb['fivedaycheck']['context'] = {
-           'context':  'fivedaycheck',     # STR Name of context (ex in list)
-           'dataProvided':   True,              # BOOL Was data provided
-           'data': {                            # DICT Data if provided
-               'takeaway': contextResult,              # STR Context takeaway (weather specific)
-               'passedData': vars.weather['5week'],          # OBJ Extra data if passed
-               'listenfor': True,               # BOOL Check if listening for possible contextual requests
-               'listenforkeys': listeningKeys    # LIST List of keys for listening handler to listen for
-               },
-          }
-def fiveDayContext(keywords, info=False, info2=False):
-    for day in vars.weather['5week']:
-        if vars.weather['5week'][day]['day'].lower() in keywords:
-            trueDay = vars.weather['5week'][day]
-            details = ["uv", "uv reading", "chance of rain", "chance of snow", "pressure", "barometric pressure", "atmospheric pressure", 
-            "wind speed", "wind gust", "wind direction", "precipitation", "temperature", "temperatures", "feelslike", "feels like",
-            "weather", "forecast", "detail", "details", "happening"]
-            if "uv" in keywords:
-                uni.speak(uni.choose([
-                    f"The UV reading for {trueDay['day']} is currently expected at {trueDay['details']['uv']}.",
-                    f"The UV reading for {trueDay['day']} is forecasted at {trueDay['details']['uv']}.",
-                    f"{trueDay['day']} is currenly expected to have a UV reading of {trueDay['details']['uv']}."
-                ]))
-                break
-            elif "pressure" in keywords:
-                success = pressureOutside(False, direct=trueDay)
-                uni.speak(success)
-            elif "wind" in keywords:
-                if trueDay['details']['winddir']:
-                    uni.speak(uni.choose([
-                        f"The forecasted wind for {trueDay['day']} is expected at {trueDay['details']['windspeed']} mph. {trueDay['details']['winddir']}.",
-                        f"Expect {trueDay['details']['windspeed']} mph. {trueDay['details']['winddir']} on {trueDay['day']}.",
-                        f"The forecasted windspeeds for {trueDay['day']} is expected at {trueDay['details']['windspeed']} mph. {trueDay['details']['winddir']}.",
-                    ]))
-                    break
-                else:
-                    uni.speak(uni.choose([
-                        f"The forecasted wind for {trueDay['day']} is expected at {trueDay['details']['windspeed']} mph.",
-                        f"Expect {trueDay['details']['windspeed']} mph.",
-                        f"The forecasted windspeeds for {trueDay['day']} is expected at {trueDay['details']['windspeed']} mph.",
-                    ]))
-                    break
-            elif "temperatures" in keywords or "temperature" in keywords or "temps" in keywords or "temp" in keywords or "feelslike" in keywords or ("feels" in keywords and "link" in keywords):
-                phrase = uni.choose([
-                    f"The forecasted average temperature for {trueDay['day']} is expected at {trueDay['temps']['day']}°**.",
-                    f"Expect an average of {trueDay['temps']['day']}°** on {trueDay['day']}.",
-                    f"I am currently forecasting an average temperature of {trueDay['temps']['day']}°** on {trueDay['day']}."
-                ])
-                if trueDay['temps']['day'] == trueDay['temps']['fl']:
-                    phrase.replace("**", "")
-                else:
-                    phrase.replace("**", uni.choose([
-                        f" with an average feels like temp of {trueDay['temps']['fl']}°",
-                        f" and a feels like temperature of {trueDay['temps']['fl']}°",
-                    ]))
-                uni.speak(phrase)
-                break
-            elif "weather" in keywords or "details" in keywords or "forecast" in keywords or (("whats" in keywords or "what" in keywords) and "happening" in keywords):
-                uni.speak(uni.choose([
-                    f"Expect {trueDay['forecast']['basic']} on {trueDay['day']}.",
-                    f"I am forecasting {trueDay['forecast']['basic']} {uni.choose(['for', 'on'])} {trueDay['day']}.",
-                    f"For {trueDay['day']} my forecast reads, {trueDay['forecast']['details']}",
-                ]))
-                break
-            elif "rain" in keywords or "precipitation" in keywords or "snow" in keywords or "ice" in keywords:
-                if trueDay['details']['popType']:
-                    uni.speak(uni.choose([
-                        f"There is currently a {trueDay['details']['pop']}% chance of {trueDay['details']['popType'][0]}.",
-                        f"For {trueDay['day']}, expect a {trueDay['details']['pop']}% chance of {trueDay['details']['popType'][0]}.",
-                        f"I am forecasting a {trueDay['details']['pop']}% chance of {trueDay['details']['popType'][0]} on {trueDay['day']}."
-                    ]))
-                    break
-                else:
-                    uni.speak(uni.choose([
-                        f"I don't see a chance of rain or precipitation on {trueDay['day']}.",
-                        f"I am not currently forecasting a chance of rain on {trueDay['day']}.",
-                        f"I do not currently see any chance of {uni.choose(['precipitation', 'rain'])} on {trueDay['day']}."
-                    ]))
-                    break
-    print(keywords)
-    return True
+    return success
 qb['fivedaycheck']['context']['data']['function'] = fiveDayContext
 
 

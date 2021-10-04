@@ -1,9 +1,10 @@
+import requests
 import random 
 from universal import vars
 from universal import speechhandle
 from universal import synonyms
 import re
-
+clientid = ""
 
 def choose(phrases):
     phrase, phrase2, phrase3 = random.choice(phrases), random.choice(phrases), random.choice(phrases)
@@ -14,6 +15,7 @@ def choose(phrases):
     return phrase
 
 
+
 def checkforSyn(string):
     for x in range(0,10):
         for word in synonyms.synonyms:
@@ -22,7 +24,9 @@ def checkforSyn(string):
                 print("replacement")
                 string = string.replace(word, choose(synonyms.synonyms[word]), random.randrange(1,4))
         for word in synonyms.wordReplacement:
-            pass
+            choice = random.choice([True, False, True])
+            if choice:
+                string = string.replace(word, choose(synonyms.wordReplacement[word]))
     print(string)
     return string
     
@@ -37,6 +41,12 @@ def speak(sentence):
         vars.phrases['pastPhrases'].pop(5)
     vars.phrases['lastPhrase'] = sentence
 
+def conversation(keywords, literal):
+    url = f"http://api.brainshop.ai/get?bid=160169&key=E4q6ThD41UgOQwvG&uid=nate&msg={literal}"
+
+    response = requests.request("GET", url).json()
+    speak(response['cnt'])
+    return True
 
 def makeContext(newContext):
     if vars.context['recentContext']:

@@ -2,6 +2,21 @@ import time
 from datetime import date, datetime
 from weather import forecaster as forecast
 
+currentdt = 0
+currentH = 0
+currentM = 0
+currentS = 0
+formatTime = ""
+currentDate = {}
+
+config = {
+    'times' : {
+        'hourannouncement': True
+    }
+}
+
+alarms = {}
+
 context = {
     "recentContext" : None,
     "pastContext": None,
@@ -41,9 +56,7 @@ phrases = {
     'phraseLimit':5
 }
 
-syonyms = {
-    "expect":['anticipate', 'look for', 'look forward too', 'figure', 'reckon'],
-}
+
 #while time.sleep(weather['updateInterval']):
 #    weather['lastUpdate'] = datetime.now()
 #    weatherResult = forecast.update("all")
